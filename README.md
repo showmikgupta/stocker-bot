@@ -9,6 +9,7 @@ currently traded common stocks and shares, mostly likely using React.
 
 ## Installation
 
+This is only for stocker-bot developers to use to work on and run the bot locally on their machine.
 Use the package manager [pip](https://pip.pypa.io/en/stable/) to install stocker-bot
 
 ```bash
