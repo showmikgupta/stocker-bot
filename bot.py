@@ -4,6 +4,7 @@ import os
 import ftplib
 import re
 import random
+import locale
 from dotenv import load_dotenv  # used for getting environment vars
 from discord.ext import commands  # functionality for bots
 import discord
@@ -62,14 +63,34 @@ async def chart(ctx, ticker):
 @bot.command(name='price', help='Displays current price, high, low, previous close, and current volume')
 async def price(ctx, ticker):
     ticker = ticker.upper()
-    response = f'WIP!\nFor now you can visit Yahoo Finance for up to date prices\nhttps://finance.yahoo.com/quote/{ticker}'
 
     if ticker not in tickers:
         response = "Invalid ticker symbol entered. Make sure you typed it in correctly."
         await ctx.send(response)
         return
 
-    await ctx.send(response)
+    price_info = stock.get_price(ticker)
+    del price_info['symbol']
+    del price_info['latest trading day']
+    del price_info['change']
+
+    embed = discord.Embed(title=f"__**{ticker} Daily Price History:**__", color=0x03f8fc, timestamp=ctx.message.created_at)
+    locale.setlocale(locale.LC_ALL, '')
+    stat_string = ""
+
+    for key in price_info:
+        if key == 'open' or key == 'price' or key == 'high' or key == 'low' or key == 'previous close':
+            stat_string += f'{key.title()}: {locale.currency(float(price_info[key]), grouping=True)}\n'
+        elif key == 'change percent':
+            stat_string += f'Percent Change: {price_info[key]}\n'
+        elif key == 'volume':
+            volume = '{:,}'.format(int(price_info[key]))
+            stat_string += f'{key.title()}: {volume}\n'
+        else:
+            stat_string += f'{key.title()}: {price_info[key]}\n'
+
+    embed.add_field(name='**Statistics**', value=stat_string, inline=False)
+    await ctx.send(embed=embed)
 
 
 # checks to see if "tickers.txt" files exist before attemping to download
