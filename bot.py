@@ -1,10 +1,12 @@
 # bot.py
+import stock
 import os
 import ftplib	
 import re
 import random
 from dotenv import load_dotenv #used for getting environment vars
 from discord.ext import commands #functionality for bots
+import discord
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -47,7 +49,10 @@ async def chart(ctx, ticker):
 		await ctx.send(response)
 		return
 	
-	await ctx.send(response)
+	stock.get_month_chart(ticker)
+	filename = f'{ticker.lower()}_month_chart.png'
+	await ctx.send(file=discord.File(filename))
+	os.remove(f'{ticker.lower()}_month_chart.png')
 	
 #!price command
 @bot.command(name='price', help='Displays current price, high, low, previous close, and current volume')
