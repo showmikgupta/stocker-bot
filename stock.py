@@ -22,7 +22,9 @@ def get_month_chart(ticker):
     # by default the indexing is formatted like YYYY-MM-DD which is unnecessary
     # we will use only the month and day to index the data
     index = data.index
+    closing_prices = data['4. close']
     new_index = []
+    closing_reversed = []
 
     for date in index:
         month = date.date().month
@@ -30,8 +32,13 @@ def get_month_chart(ticker):
         date_index = f'{month}-{day}'
         new_index.append(date_index)
 
+    for price in closing_prices:
+        closing_reversed.append(price)
+
     new_index.reverse()
+    closing_reversed.reverse()
     data.index = new_index
+    data['4. close'] = closing_reversed
 
     fig = plt.figure()
     ax = plt.gca()
