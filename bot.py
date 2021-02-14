@@ -18,6 +18,7 @@ tickers = []
 # action to perform when bot is ready
 @bot.event
 async def on_ready():
+    stock.set_dark_mode()
     print(f'{bot.user.name} has connected to Discord!')
 
 
@@ -74,7 +75,8 @@ async def price(ctx, ticker):
     del price_info['latest trading day']
     del price_info['change']
 
-    embed = discord.Embed(title=f"__**{ticker} Daily Price History:**__", color=0x03f8fc, timestamp=ctx.message.created_at)
+    embed = discord.Embed(title=f"__**{ticker} Daily Price History:**__", color=0x03f8fc,
+                          timestamp=ctx.message.created_at)
     locale.setlocale(locale.LC_ALL, '')
     stat_string = ""
 
@@ -91,6 +93,20 @@ async def price(ctx, ticker):
 
     embed.add_field(name='**Statistics**', value=stat_string, inline=False)
     await ctx.send(embed=embed)
+
+
+# !dark command
+@bot.command(name='dark', help='Changes the chart to be displayed in dark mode (default)')
+async def dark(ctx):
+    stock.set_dark_mode()
+    await ctx.send('Dark mode enabled')
+
+
+# !light command
+@bot.command(name='light', help='Changes the chart to be displayed in light mode')
+async def light(ctx):
+    stock.set_light_mode()
+    await ctx.send('Light mode enabled')
 
 
 # checks to see if "tickers.txt" files exist before attemping to download
