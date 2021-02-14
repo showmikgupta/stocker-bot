@@ -30,7 +30,9 @@ async def fake(ctx):
         'Nah yo',
         'stop being a republican business major',
         'unlucky',
-        'bot diff'
+        'bot diff',
+        "Cockalorum",
+        "MumpSIMPus"
     ]
 
     response = random.choice(responses)
