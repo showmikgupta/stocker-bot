@@ -40,8 +40,8 @@ async def fake(ctx):
 # !stocks command
 @bot.command(name='stocks', help='Posts a link that displays all the currently traded stocks')
 async def stocks(ctx):
-    response = "WIP!"
-    await ctx.send(response)
+    response = "https://www.nyse.com/listings_directory/stock"
+    await ctx.send(f'List of all currently traded stocks\n{response}')
 
 
 # !chart command
