@@ -149,6 +149,7 @@ def get_five_year_data(ticker, ts, current_time):
     return data, meta_data
 
 
+# goes through the data and keeps track of all the rows that have a date index >= limit
 def get_shortened_data(data, limit):
     counter = 0
     dates = data.index
