@@ -1,8 +1,8 @@
 import os
-
-import matplotlib
+import datetime
+import dateutil.relativedelta
 from dotenv import load_dotenv  # used for getting environment vars
-from alpha_vantage.timeseries import TimeSeries  # python access to alpha vantahe api
+from alpha_vantage.timeseries import TimeSeries  # python access to alpha vantage api
 import matplotlib.pyplot as plt
 
 load_dotenv()
@@ -12,29 +12,53 @@ BG_COLOR = '#1F2326'
 ACCENT_COLOR = 'black'
 
 
-# get month data for give ticker using alpha vantage api plotting daily closing prices
+# get data for give ticker for give timeframe using alpha vantage api plotting closing prices
 # using pyplot to plot pandas dataframe
-def get_month_chart(ticker):
+def get_chart(ticker, timeframe):
     ts = TimeSeries(key=AV_KEY, output_format='pandas')  # creating new instance of TimeSeries class
-    data, meta_data = ts.get_daily(symbol=ticker)  # get daily data
-    data = data[0:23]  # last months daily prices
+    current_time = datetime.datetime.now()
+    data, meta_data = [], []
 
-    # by default the indexing is formatted like YYYY-MM-DD which is unnecessary
-    # we will use only the month and day to index the data
+    # get only the relevant data for the given timeframe
+    if timeframe == '1M':
+        data, meta_data = get_month_data(ticker, ts, current_time)
+    elif timeframe == '3M':
+        data, meta_data = get_three_month_data(ticker, ts, current_time)
+    elif timeframe == '6M':
+        data, meta_data = get_six_month_data(ticker, ts, current_time)
+    elif timeframe == 'YTD':
+        data, meta_data = get_ytd_data(ticker, ts, current_time)
+    elif timeframe == '1Y':
+        data, meta_data = get_year_data(ticker, ts, current_time)
+    elif timeframe == '2Y':
+        data, meta_data = get_two_year_data(ticker, ts, current_time)
+    else:
+        data, meta_data = get_five_year_data(ticker, ts, current_time)
+
     index = data.index
     closing_prices = data['4. close']
     new_index = []
     closing_reversed = []
 
-    for date in index:
-        month = date.date().month
-        day = date.date().day
-        date_index = f'{month}-{day}'
-        new_index.append(date_index)
+    # by default the indexing is formatted like YYYY-MM-DD which is unnecessary
+    # we will change the date format to index depending on the timeframe
+    if timeframe == '1M' or timeframe == '3M' or timeframe == '6M' or timeframe == 'YTD':
+        for date in index:
+            month = date.date().month
+            day = date.date().day
+            date_index = f'{month}-{day}'
+            new_index.append(date_index)
+    else:
+        for date in index:
+            month = date.date().month
+            year = date.date().year
+            date_index = f'{month}-{year}'
+            new_index.append(date_index)
 
     for price in closing_prices:
         closing_reversed.append(price)
 
+    # applying reformatted indices and reversed closing prices
     new_index.reverse()
     closing_reversed.reverse()
     data.index = new_index
@@ -63,10 +87,99 @@ def get_month_chart(ticker):
     # removing the axis labels because no one needs to see that
     ax.set_xlabel('')
     ax.set_ylabel('')
+    plt.title(get_chart_title(ticker, timeframe), color=ACCENT_COLOR)
 
-    plt.title(f'Month Chart for {ticker}', color=ACCENT_COLOR)
-    plt.savefig(f'{ticker.lower()}_month_chart.png')  # saving file locally (will be deleted in bot.py)
+    plt.savefig(f'{ticker.lower()}_chart.png')  # saving file locally (will be deleted in bot.py)
     plt.clf()
+
+
+# returns a slice of the original dataset relevant for the past month
+def get_month_data(ticker, ts, current_time):
+    data, meta_data = ts.get_daily(symbol=ticker, outputsize='full')
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(months=-1))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the past three months
+def get_three_month_data(ticker, ts, current_time):
+    data, meta_data = ts.get_daily(symbol=ticker, outputsize='full')
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(months=-3))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the past six months
+def get_six_month_data(ticker, ts, current_time):
+    data, meta_data = ts.get_daily(symbol=ticker, outputsize='full')
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(months=-6))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the year-to-date
+def get_ytd_data(ticker, ts, current_time):
+    data, meta_data = ts.get_daily(symbol=ticker, outputsize='full')
+    data = get_shortened_data(data, datetime.datetime(current_time.year, 1, 1))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the past year
+def get_year_data(ticker, ts, current_time):
+    data, meta_data = ts.get_daily(symbol=ticker, outputsize='full')
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(years=-1))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the past two years
+def get_two_year_data(ticker, ts, current_time):
+    data, meta_data = ts.get_weekly(symbol=ticker)
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(years=-2))
+
+    return data, meta_data
+
+
+# returns a slice of the original dataset relevant for the past 5 years
+def get_five_year_data(ticker, ts, current_time):
+    data, meta_data = ts.get_weekly(symbol=ticker)
+    data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(years=-5))
+
+    return data, meta_data
+
+
+def get_shortened_data(data, limit):
+    counter = 0
+    dates = data.index
+
+    for date in dates:
+        if date.date() >= limit.date():
+            counter += 1
+        elif date.date().year == limit.date().year and date.date().month == limit.date().month and \
+                date.date().day == limit.date().day:
+            counter += 1
+        else:
+            break
+
+    return data[:counter]
+
+
+def get_chart_title(ticker, timeframe):
+    if timeframe == '1M':
+        return f'1 Month Chart for {ticker}'
+    elif timeframe == '3M':
+        return f'3 Month Chart for {ticker}'
+    elif timeframe == '6M':
+        return f'6 Month Chart for {ticker}'
+    elif timeframe == 'YTD':
+        return f'Year-To-Date Chart for {ticker}'
+    elif timeframe == '1Y':
+        return f'1 Year Chart for {ticker}'
+    elif timeframe == '2Y':
+        return f'2 Year Chart for {ticker}'
+    else:
+        return f'5 Year Chart for {ticker}'
 
 
 # gets the price of the given ticker, reformats the json, and return it as a dictionary

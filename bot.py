@@ -12,6 +12,7 @@ import discord
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix='!')
+valid_times = ['1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 tickers = []
 
 
@@ -48,18 +49,40 @@ async def stocks(ctx):
 
 # !chart command
 @bot.command(name='chart', help='Charts the price history of the given stock over 1 month')
-async def chart(ctx, ticker):
+async def chart(ctx, ticker, timeframe='1M'):
     ticker = ticker.upper()
 
     if ticker not in tickers:
-        response = "Invalid ticker symbol entered. Make sure you typed it in correctly."
-        await ctx.send(response)
+        title = 'Invalid ticker symbol entered'
+        description = 'Enter a valid ticker symbol'
+        embed = discord.Embed(title=title, description=description, color=0xdc143c)
+        await ctx.send(embed=embed)
         return
 
-    stock.get_month_chart(ticker)
-    filename = f'{ticker.lower()}_month_chart.png'
-    await ctx.send(file=discord.File(filename))
-    os.remove(f'{ticker.lower()}_month_chart.png')
+    timeframe = timeframe.upper()
+
+    if timeframe not in valid_times:
+        title = 'Invalid timeframe entered'
+        description = 'Valid timeframes include:'
+        embed = discord.Embed(title=title, description=description, color=0xdc143c)
+
+        for tf in valid_times:
+            if tf[1] == 'M':
+                embed.add_field(name=tf, value=f'{tf[0]} Month', inline=True)
+            elif tf[1] == 'Y':
+                embed.add_field(name=tf, value=f'{tf[0]} Year', inline=True)
+            else:
+                embed.add_field(name=tf, value=f'Year To Date', inline=True)
+
+        await ctx.send(embed=embed)
+        return
+
+    stock.get_chart(ticker, timeframe)
+    embed = discord.Embed(color=0x03f8fc)
+    file = discord.File(f'./{ticker.lower()}_chart.png', filename='image.png')
+    embed.set_image(url='attachment://image.png')
+    await ctx.send(file=file, embed=embed)
+    os.remove(f'{ticker.lower()}_chart.png')
 
 
 # !price command
