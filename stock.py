@@ -18,6 +18,8 @@ def get_chart(ticker, timeframe):
     ts = TimeSeries(key=AV_KEY, output_format='pandas')  # creating new instance of TimeSeries class
     current_time = datetime.datetime.now()
     data, meta_data = [], []
+    labeling_flag = False
+    adjusted_flag = False  # flag to determine if adjusted prices are needed for the dataset
 
     # get only the relevant data for the given timeframe
     if timeframe == '1M':
@@ -32,17 +34,44 @@ def get_chart(ticker, timeframe):
         data, meta_data = get_year_data(ticker, ts, current_time)
     elif timeframe == '2Y':
         data, meta_data = get_two_year_data(ticker, ts, current_time)
+        adjusted_flag = True
     else:
         data, meta_data = get_five_year_data(ticker, ts, current_time)
+        adjusted_flag = True
 
     index = data.index
-    closing_prices = data['4. close']
     new_index = []
+    closing_prices = []
     closing_reversed = []
+
+    # need to get adjusted weekly data for timeframes greater than or equal to 2 years (2Y)
+    if adjusted_flag:
+        closing_prices = data['5. adjusted close']
+    else:
+        closing_prices = data['4. close']
+
+    updated_timeframe = timeframe
+
+    # if a stock hasn't been traded as long as the given timeframe, we need to adjust the timeframe to show in the chart
+    if timeframe == '2Y' or timeframe == '5Y':
+        month_delta = (current_time.date() - data.index[-1].date()).days / 30
+
+        if month_delta < 24:
+            if month_delta <= 1:
+                updated_timeframe = '1M'
+            elif month_delta <= 3:
+                updated_timeframe = '3M'
+            elif month_delta <= 6:
+                updated_timeframe = '6M'
+            elif month_delta <= 12:
+                updated_timeframe = '1Y'
+            else:
+                updated_timeframe = '2Y'
 
     # by default the indexing is formatted like YYYY-MM-DD which is unnecessary
     # we will change the date format to index depending on the timeframe
-    if timeframe == '1M' or timeframe == '3M' or timeframe == '6M' or timeframe == 'YTD':
+    if updated_timeframe == '1M' or updated_timeframe == '3M' or updated_timeframe == '6M' or \
+            updated_timeframe == 'YTD':
         for date in index:
             month = date.date().month
             day = date.date().day
@@ -51,7 +80,7 @@ def get_chart(ticker, timeframe):
     else:
         for date in index:
             month = date.date().month
-            year = date.date().year
+            year = str(date.date().year)[2:]
             date_index = f'{month}-{year}'
             new_index.append(date_index)
 
@@ -62,7 +91,6 @@ def get_chart(ticker, timeframe):
     new_index.reverse()
     closing_reversed.reverse()
     data.index = new_index
-    data['4. close'] = closing_reversed
 
     fig = plt.figure()
     ax = plt.gca()
@@ -81,8 +109,12 @@ def get_chart(ticker, timeframe):
     ax.tick_params(axis='x', colors=ACCENT_COLOR)
     ax.tick_params(axis='y', colors=ACCENT_COLOR)
 
-    # plotting the data
-    data['4. close'].plot(color=LINE_COLOR)
+    if adjusted_flag:
+        data['5. adjusted close'] = closing_reversed
+        data['5. adjusted close'].plot(color=LINE_COLOR)
+    else:
+        data['4. close'] = closing_reversed
+        data['4. close'].plot(color=LINE_COLOR)
 
     # removing the axis labels because no one needs to see that
     ax.set_xlabel('')
@@ -135,7 +167,7 @@ def get_year_data(ticker, ts, current_time):
 
 # returns a slice of the original dataset relevant for the past two years
 def get_two_year_data(ticker, ts, current_time):
-    data, meta_data = ts.get_weekly(symbol=ticker)
+    data, meta_data = ts.get_weekly_adjusted(symbol=ticker)
     data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(years=-2))
 
     return data, meta_data
@@ -143,7 +175,7 @@ def get_two_year_data(ticker, ts, current_time):
 
 # returns a slice of the original dataset relevant for the past 5 years
 def get_five_year_data(ticker, ts, current_time):
-    data, meta_data = ts.get_weekly(symbol=ticker)
+    data, meta_data = ts.get_weekly_adjusted(symbol=ticker)
     data = get_shortened_data(data, current_time + dateutil.relativedelta.relativedelta(years=-5))
 
     return data, meta_data
@@ -153,6 +185,9 @@ def get_five_year_data(ticker, ts, current_time):
 def get_shortened_data(data, limit):
     counter = 0
     dates = data.index
+
+    if dates[-1].date() > limit.date():
+        limit = dates[-1]
 
     for date in dates:
         if date.date() >= limit.date():
