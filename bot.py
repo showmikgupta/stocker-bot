@@ -154,7 +154,8 @@ def download_tickers():
         for file in ["nasdaqlisted.txt", "otherlisted.txt"]:
             localfile = open(file, 'r')
             for line in localfile:
-                if re.search("Common Stock", line) or re.search("Common Share", line):
+                if re.search("Common Stock", line) or re.search("Common Share", line) or \
+                        re.search("common stock", line) or re.search("S&P", line) or re.search("ETF", line):
                     ticker = line.split("|")[0]
                     # Append tickers to file tickers.txt
                     open("tickers.txt", "a+").write(ticker + "\n")
