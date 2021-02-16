@@ -2,17 +2,13 @@ import os
 import datetime
 import dateutil.relativedelta
 from alpha_vantage.timeseries import TimeSeries  # python access to alpha vantage api
-import matplotlib.pyplot as plt
 
 AV_KEY = os.getenv('ALPHAVANTAGE_API_KEY')
-LINE_COLOR = '#03F8FC'
-BG_COLOR = '#1F2326'
-ACCENT_COLOR = 'black'
 
 
 # get data for give ticker for give timeframe using alpha vantage api plotting closing prices
 # using pyplot to plot pandas dataframe
-def get_chart(ticker, timeframe):
+def get_chart_data(ticker, timeframe):
     ts = TimeSeries(key=AV_KEY, output_format='pandas')  # creating new instance of TimeSeries class
     current_time = datetime.datetime.now()
     data, meta_data = [], []
@@ -90,37 +86,12 @@ def get_chart(ticker, timeframe):
     closing_reversed.reverse()
     data.index = new_index
 
-    fig = plt.figure()
-    ax = plt.gca()
-
-    # setting the plot and background color depending on if light or dark mode is selected
-    fig.patch.set_facecolor(BG_COLOR)
-    ax.set_facecolor(BG_COLOR)
-
-    # changing the axis colors depending on if light or dark mode is seleted
-    ax.spines['bottom'].set_color(ACCENT_COLOR)
-    ax.spines['top'].set_color(ACCENT_COLOR)
-    ax.spines['right'].set_color(ACCENT_COLOR)
-    ax.spines['left'].set_color(ACCENT_COLOR)
-
-    # changing the marking along the axes depending on if light or dark mode is selected
-    ax.tick_params(axis='x', colors=ACCENT_COLOR)
-    ax.tick_params(axis='y', colors=ACCENT_COLOR)
-
     if adjusted_flag:
         data['5. adjusted close'] = closing_reversed
-        data['5. adjusted close'].plot(color=LINE_COLOR)
     else:
         data['4. close'] = closing_reversed
-        data['4. close'].plot(color=LINE_COLOR)
 
-    # removing the axis labels because no one needs to see that
-    ax.set_xlabel('')
-    ax.set_ylabel('')
-    plt.title(get_chart_title(ticker, timeframe), color=ACCENT_COLOR)
-
-    plt.savefig(f'{ticker.lower()}_chart.png')  # saving file locally (will be deleted in bot.py)
-    plt.clf()
+    return data, adjusted_flag
 
 
 # returns a slice of the original dataset relevant for the past month
@@ -199,23 +170,6 @@ def get_shortened_data(data, limit):
     return data[:counter]
 
 
-def get_chart_title(ticker, timeframe):
-    if timeframe == '1M':
-        return f'1 Month Chart for {ticker}'
-    elif timeframe == '3M':
-        return f'3 Month Chart for {ticker}'
-    elif timeframe == '6M':
-        return f'6 Month Chart for {ticker}'
-    elif timeframe == 'YTD':
-        return f'Year-To-Date Chart for {ticker}'
-    elif timeframe == '1Y':
-        return f'1 Year Chart for {ticker}'
-    elif timeframe == '2Y':
-        return f'2 Year Chart for {ticker}'
-    else:
-        return f'5 Year Chart for {ticker}'
-
-
 # gets the price of the given ticker, reformats the json, and return it as a dictionary
 def get_price(ticker):
     ts = TimeSeries(key=AV_KEY)
@@ -230,19 +184,3 @@ def get_price(ticker):
         json_dict[k] = v
 
     return json_dict
-
-
-# sets colors for dark mode
-def set_dark_mode():
-    global LINE_COLOR, BG_COLOR, ACCENT_COLOR
-    LINE_COLOR = '#03F8FC'
-    BG_COLOR = '#1F2326'
-    ACCENT_COLOR = 'white'
-
-
-# sets colors for light mode
-def set_light_mode():
-    global LINE_COLOR, BG_COLOR, ACCENT_COLOR
-    LINE_COLOR = 'blue'
-    BG_COLOR = 'white'
-    ACCENT_COLOR = 'black'
