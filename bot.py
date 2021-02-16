@@ -9,6 +9,9 @@ from dotenv import load_dotenv  # used for getting environment vars
 from discord.ext import commands  # functionality for bots
 import discord
 
+EMBED_COLOR = 0x03f8fc
+EMBED_ERR_COLOR = 0xdc143c
+
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix='!')
@@ -43,8 +46,9 @@ async def fake(ctx):
 # !stocks command
 @bot.command(name='stocks', help='Posts a link that displays all the currently traded stocks')
 async def stocks(ctx):
-    response = "https://www.nyse.com/listings_directory/stock"
-    await ctx.send(f'List of all currently traded stocks\n{response}')
+    url = "https://www.nyse.com/listings_directory/stock"
+    embed = discord.Embed(description=f'List of all currently traded stocks\n{url}', color=EMBED_COLOR)
+    await ctx.send(embed=embed)
 
 
 # !chart command
@@ -55,7 +59,7 @@ async def chart(ctx, ticker, timeframe='1M'):
     if ticker not in tickers:
         title = 'Invalid ticker symbol entered'
         description = 'Enter a valid ticker symbol'
-        embed = discord.Embed(title=title, description=description, color=0xdc143c)
+        embed = discord.Embed(title=title, description=description, color=EMBED_ERR_COLOR)
         await ctx.send(embed=embed)
         return
 
@@ -64,7 +68,7 @@ async def chart(ctx, ticker, timeframe='1M'):
     if timeframe not in valid_times:
         title = 'Invalid timeframe entered'
         description = 'Valid timeframes include:'
-        embed = discord.Embed(title=title, description=description, color=0xdc143c)
+        embed = discord.Embed(title=title, description=description, color=EMBED_ERR_COLOR)
 
         for tf in valid_times:
             if tf[1] == 'M':
@@ -78,7 +82,7 @@ async def chart(ctx, ticker, timeframe='1M'):
         return
 
     stock.get_chart(ticker, timeframe)
-    embed = discord.Embed(color=0x03f8fc)
+    embed = discord.Embed(color=EMBED_COLOR)
     file = discord.File(f'./{ticker.lower()}_chart.png', filename='image.png')
     embed.set_image(url='attachment://image.png')
     await ctx.send(file=file, embed=embed)
@@ -100,7 +104,7 @@ async def price(ctx, ticker):
     del price_info['latest trading day']
     del price_info['change']
 
-    embed = discord.Embed(title=f"__**{ticker} Daily Price History:**__", color=0x03f8fc,
+    embed = discord.Embed(title=f"__**{ticker} Daily Price History:**__", color=EMBED_COLOR,
                           timestamp=ctx.message.created_at)
     locale.setlocale(locale.LC_ALL, '')
     stat_string = ""
