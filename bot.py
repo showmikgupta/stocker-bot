@@ -175,5 +175,7 @@ def download_tickers():
     tickers.sort()
 
 
-download_tickers()
-bot.run(TOKEN)
+# main function to start the bot
+def run():
+    download_tickers()
+    bot.run(TOKEN)

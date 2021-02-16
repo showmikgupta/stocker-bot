@@ -1,11 +1,9 @@
 import os
 import datetime
 import dateutil.relativedelta
-from dotenv import load_dotenv  # used for getting environment vars
 from alpha_vantage.timeseries import TimeSeries  # python access to alpha vantage api
 import matplotlib.pyplot as plt
 
-load_dotenv()
 AV_KEY = os.getenv('ALPHAVANTAGE_API_KEY')
 LINE_COLOR = '#03F8FC'
 BG_COLOR = '#1F2326'
