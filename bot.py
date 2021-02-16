@@ -131,7 +131,7 @@ async def price(ctx, ticker):
         elif key == 'change percent':
             stat_string += f'Percent Change: {price_info[key]}\n'
         elif key == 'volume':
-            volume = '{:,}'.format(int(price_info[key]))
+            volume = '{:,}'.format(int(float(price_info[key])))
             stat_string += f'{key.title()}: {volume}\n'
         else:
             stat_string += f'{key.title()}: {price_info[key]}\n'
