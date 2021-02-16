@@ -8,12 +8,22 @@ import locale
 from dotenv import load_dotenv  # used for getting environment vars
 from discord.ext import commands  # functionality for bots
 import discord
+import matplotlib.pyplot as plt
+import pymongo
+from pymongo import MongoClient
+
+load_dotenv()
+TOKEN = os.getenv('DISCORD_TOKEN')
+CONNECTION_URL = os.getenv('MONGODB_CONNECTION_URL')
+
+# connecting to MongoDB Atlas
+cluster = MongoClient(CONNECTION_URL)
+db = cluster["BotData"]
+collection = db["BotData"]
 
 EMBED_COLOR = 0x03f8fc
 EMBED_ERR_COLOR = 0xdc143c
 
-load_dotenv()
-TOKEN = os.getenv('DISCORD_TOKEN')
 bot = commands.Bot(command_prefix='!')
 valid_times = ['1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 tickers = []
@@ -22,7 +32,12 @@ tickers = []
 # action to perform when bot is ready
 @bot.event
 async def on_ready():
-    stock.set_dark_mode()
+    # set new active servers to have default values in db if they don't exist yet
+    active_guilds = bot.guilds
+
+    for guild in active_guilds:
+        add_guild(guild)
+
     print(f'{bot.user.name} has connected to Discord!')
 
 
@@ -81,7 +96,8 @@ async def chart(ctx, ticker, timeframe='1M'):
         await ctx.send(embed=embed)
         return
 
-    stock.get_chart(ticker, timeframe)
+    data, adjusted_flag = stock.get_chart_data(ticker, timeframe)
+    create_chart(ctx.guild, ticker, timeframe, data, adjusted_flag)
     embed = discord.Embed(color=EMBED_COLOR)
     file = discord.File(f'./{ticker.lower()}_chart.png', filename='image.png')
     embed.set_image(url='attachment://image.png')
@@ -127,15 +143,111 @@ async def price(ctx, ticker):
 # !dark command
 @bot.command(name='dark', help='Changes the chart to be displayed in dark mode (default)')
 async def dark(ctx):
-    stock.set_dark_mode()
+    if guild_exists(ctx.guild):
+        query = {'guild_id': ctx.guild.id}
+        update = {"$set": {"theme": 0}}
+        collection.update(query, update)
+    else:
+        add_guild(ctx.guild, theme=0)
+
     await ctx.send('Dark mode enabled')
 
 
 # !light command
 @bot.command(name='light', help='Changes the chart to be displayed in light mode')
 async def light(ctx):
-    stock.set_light_mode()
+    if guild_exists(ctx.guild):
+        query = {'guild_id': ctx.guild.id}
+        update = {"$set": {"theme": 1}}
+        collection.update(query, update)
+    else:
+        add_guild(ctx.guild, theme=1)
+
     await ctx.send('Light mode enabled')
+
+
+# creates the chart for the given time frame
+def create_chart(guild, ticker, timeframe, data, adjusted_flag=False):
+    # setting default colors to dark
+    bg_color = '#1F2326'
+    accent_color = 'white'
+    line_color = '#03F8FC'
+
+    query = {'guild_id': guild.id}
+
+    if guild_exists(guild):
+        theme = collection.find(query).limit(1)[0]["theme"]
+
+        if theme == 1:  # set light mode colors
+            bg_color = 'white'
+            accent_color = 'black'
+            line_color = 'blue'
+    else:
+        add_guild(guild, theme=0)
+    
+    fig = plt.figure()
+    ax = plt.gca()
+
+    # setting the plot and background color depending on if light or dark mode is selected
+    fig.patch.set_facecolor(bg_color)
+    ax.set_facecolor(bg_color)
+
+    # changing the axis colors depending on if light or dark mode is seleted
+    ax.spines['bottom'].set_color(accent_color)
+    ax.spines['top'].set_color(accent_color)
+    ax.spines['right'].set_color(accent_color)
+    ax.spines['left'].set_color(accent_color)
+
+    # changing the marking along the axes depending on if light or dark mode is selected
+    ax.tick_params(axis='x', colors=accent_color)
+    ax.tick_params(axis='y', colors=accent_color)
+
+    if adjusted_flag:
+        data['5. adjusted close'].plot(color=line_color)
+    else:
+        data['4. close'].plot(color=line_color)
+
+    # removing the axis labels because no one needs to see that
+    ax.set_xlabel('')
+    ax.set_ylabel('')
+    plt.title(get_chart_title(ticker, timeframe), color=accent_color)
+
+    plt.savefig(f'{ticker.lower()}_chart.png')  # saving file locally (will be deleted in bot.py)
+    plt.clf()
+
+
+def get_chart_title(ticker, timeframe):
+    if timeframe == '1M':
+        return f'1 Month Chart for {ticker}'
+    elif timeframe == '3M':
+        return f'3 Month Chart for {ticker}'
+    elif timeframe == '6M':
+        return f'6 Month Chart for {ticker}'
+    elif timeframe == 'YTD':
+        return f'Year-To-Date Chart for {ticker}'
+    elif timeframe == '1Y':
+        return f'1 Year Chart for {ticker}'
+    elif timeframe == '2Y':
+        return f'2 Year Chart for {ticker}'
+    else:
+        return f'5 Year Chart for {ticker}'
+
+
+def guild_exists(guild):
+    query = {'guild_id': guild.id}
+
+    if collection.count_documents(query, limit=1):  # no data on this guild; add a new entry
+        return True
+    else:
+        return False
+
+
+def add_guild(guild, theme=0):
+    if not guild_exists(guild):
+        post = {"guild_id": guild.id,
+                "guild_name": guild.name,
+                "theme": theme}
+        collection.insert_one(post)
 
 
 # checks to see if "tickers.txt" files exist before attemping to download
