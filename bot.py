@@ -2,7 +2,6 @@
 import stock
 import os
 import ftplib
-import re
 import random
 import locale
 from dotenv import load_dotenv  # used for getting environment vars
@@ -11,6 +10,8 @@ import discord
 import matplotlib.pyplot as plt
 import pymongo
 from pymongo import MongoClient
+from datetime import datetime, timedelta
+from threading import Timer
 
 load_dotenv()
 TOKEN = os.getenv('DISCORD_TOKEN')
@@ -29,16 +30,74 @@ valid_times = ['1M', '3M', '6M', 'YTD', '1Y', '2Y', '5Y']
 tickers = []
 
 
+# checks to see if "tickers.txt" files exist before attempting to download
+# if it exists, it will not spend time to redownload data and proceed to sorting tickers into a list
+# if it doesn't exist it will download data and then sort tickers into a list
+def download_tickers(update):
+    if update or (os.path.exists('tickers.txt') is False):
+        # Connect to ftp.nasdaqtrader.com
+        ftp = ftplib.FTP('ftp.nasdaqtrader.com', 'anonymous', 'anonymous@debian.org')
+
+        # Download files nasdaqlisted.txt and otherlisted.txt from ftp.nasdaqtrader.com
+        for file in ["nasdaqlisted.txt", "otherlisted.txt"]:
+            ftp.cwd("/SymbolDirectory")
+            localfile = open(file, 'wb')
+            ftp.retrbinary('RETR ' + file, localfile.write)
+            localfile.close()
+        ftp.quit()
+
+        ticker_file = open("tickers.txt", "a+")
+
+        # add all tickers to tickers.txt
+        for file in ["nasdaqlisted.txt", "otherlisted.txt"]:
+            localfile = open(file, 'r')
+            for line in localfile:
+                ticker = line.split("|")[0]
+                # Append tickers to file tickers.txt
+                ticker_file.write(ticker + "\n")
+
+        ticker_file.close()
+
+    file = open('tickers.txt')
+
+    # places all the tickers in a list
+    for line in file:
+        tickers.append(line.rstrip('\n'))
+
+    file.close()
+    tickers.sort()
+
+
+def update_tickers():
+    print("updating tickers...")
+    download_tickers(update=True)
+    print("ticker update complete")
+
+    x = datetime.now()
+    y = x.replace(day=x.day, hour=9, minute=30, second=00, microsecond=0) + timedelta(days=1)
+    delta = y - x
+    secs = delta.total_seconds()
+    t = Timer(secs, update_tickers)
+    t.start()
+
+
 # action to perform when bot is ready
 @bot.event
 async def on_ready():
+    print(f'{bot.user.name} has connected to Discord!')
+
     # set new active servers to have default values in db if they don't exist yet
     active_guilds = bot.guilds
 
     for guild in active_guilds:
         add_guild(guild)
 
-    print(f'{bot.user.name} has connected to Discord!')
+    x = datetime.now()
+    y = x.replace(day=x.day, hour=9, minute=30, second=00, microsecond=0) + timedelta(days=1)
+    delta = y-x
+    secs = delta.total_seconds()
+    t = Timer(secs, update_tickers)
+    t.start()
 
 
 # !fake command
@@ -184,7 +243,7 @@ def create_chart(guild, ticker, timeframe, data, adjusted_flag=False):
             line_color = 'blue'
     else:
         add_guild(guild, theme=0)
-    
+
     fig = plt.figure()
     ax = plt.gca()
 
@@ -252,44 +311,7 @@ def add_guild(guild, theme=0):
         collection.insert_one(post)
 
 
-# checks to see if "tickers.txt" files exist before attemping to download
-# if it exists, it will not spend time to redownload data and proceed to sorting tickers into a list
-# if it doesn't exist it will download data and then sort tickers into a list
-def download_tickers():
-    if os.path.exists('tickers.txt') is False:
-        # Connect to ftp.nasdaqtrader.com
-        ftp = ftplib.FTP('ftp.nasdaqtrader.com', 'anonymous', 'anonymous@debian.org')
-
-        # Download files nasdaqlisted.txt and otherlisted.txt from ftp.nasdaqtrader.com
-        for file in ["nasdaqlisted.txt", "otherlisted.txt"]:
-            ftp.cwd("/SymbolDirectory")
-            localfile = open(file, 'wb')
-            ftp.retrbinary('RETR ' + file, localfile.write)
-            localfile.close()
-        ftp.quit()
-
-        # Grep for common stock in nasdaqlisted.txt and otherlisted.txt
-        for file in ["nasdaqlisted.txt", "otherlisted.txt"]:
-            localfile = open(file, 'r')
-            for line in localfile:
-                if re.search("Common Stock", line) or re.search("Common Share", line) or \
-                        re.search("common stock", line) or re.search("S&P", line) or re.search("ETF", line) or \
-                        re.search("Shares", line):
-                    ticker = line.split("|")[0]
-                    # Append tickers to file tickers.txt
-                    open("tickers.txt", "a+").write(ticker + "\n")
-
-    file = open('tickers.txt')
-
-    # places all the tickers in a list
-    for line in file:
-        tickers.append(line.rstrip('\n'))
-
-    file.close()
-    tickers.sort()
-
-
 # main function to start the bot
 def run():
-    download_tickers()
+    download_tickers(update=False)
     bot.run(TOKEN)
