@@ -19,13 +19,14 @@ Make sure to ask me for the .env files so you can get the DISCORD_TOKEN and ALPH
 ## Commands
 
 The bot supports the following commands:
-  * **!help** --- shows all the commands and description
-  * **!chart** {ticker} {timeframe=optional} --- displays a chart showing closing price of the given stock history over the given
-    timeframe. Timeframes include 1M (default), 3M, 6M, YTD, 1Y, 2Y, and 5Y.
-  * **!price** {ticker} --- displays the current, high, low, open, and previous closing prices along with the percent change
-    and the volume.
-  * **!stocks** --- Sends a link to the New York Stock Exchange directory with all the currently traded securities.  
-  * **!dark** --- Enables dark mode for charts (default).
-  * **!light** --- Enables light mode for charts.
+
+| Command | Description |
+| --- | --- |
+| `!help` | shows all the commands and description |
+| `!chart {ticker} {timeframe=optional}` | displays a chart showing closing price of the given stock history over the giventimeframe. Timeframes include 1M (default), 3M, 6M, YTD, 1Y, 2Y, and 5Y |
+| `!price {ticker}` | displays the current, high, low, open, and previous closing prices along with the percent change and the volume |
+| `!stocks` | Sends a link to the New York Stock Exchange directory with all the currently traded securities |
+| `!dark` | Enables dark mode for charts (default) |
+| `!light` | Enables light mode for charts |
 
 There are more commands that are going to be added for technical indicators and top daily movers.
