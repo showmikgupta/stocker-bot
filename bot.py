@@ -211,6 +211,8 @@ def create_chart(guild, ticker, timeframe, data, adjusted_flag=False):
     ax.set_xlabel('')
     ax.set_ylabel('')
     plt.title(get_chart_title(ticker, timeframe), color=accent_color)
+    plt.grid(True)
+    plt.minorticks_off()
 
     plt.savefig(f'{ticker.lower()}_chart.png')  # saving file locally (will be deleted in bot.py)
     plt.clf()
